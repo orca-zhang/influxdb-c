@@ -37,7 +37,7 @@ TEST (influx4c, format_line)
         INFLUX_F_STR("s", "string"),
         INFLUX_F_FLT("f", 28),
         INFLUX_F_INT("i", 1048576),
-        INFLUX_F_BOL("b", true),
+        INFLUX_F_BOL("b", 1),
         INFLUX_TS(1512722735522840439),
         INFLUX_END);
     ASSERT_TRUE(line != NULL);
@@ -51,7 +51,7 @@ TEST (influx4c, DISABLED_send_udp)
 {
     influx_client_t c;
     c.host = strdup("127.0.0.1");
-    c.port = 8086;
+    c.port = 8089;
     c.db = strdup("test");
 
     ASSERT_EQ(send_udp(&c, "temperature",
@@ -72,8 +72,13 @@ TEST (influx4c, DISABLED_post_http)
 
     ASSERT_EQ(post_http(&c, "temperature",
         INFLUX_TAG("k", "v"),
-        INFLUX_F_FLT("f", 28),
+        INFLUX_F_FLT("i", 28),
         INFLUX_END), 0);
+
+    ASSERT_EQ(post_http(&c, "temperature",
+        INFLUX_TAG("k", "v"),
+        INFLUX_F_INT("i", 28),
+        INFLUX_END), 400);
 
     free(c.host);
     free(c.db);

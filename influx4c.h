@@ -12,10 +12,10 @@
         INFLUX_F_STR("s", "string"), 
         INFLUX_F_FLT("f", 28.39), 
         INFLUX_F_INT("i", 1048576), 
-        INFLUX_F_BOL("b", true),
+        INFLUX_F_BOL("b", 1),
         INFLUX_TS(1512722735522840439),
         INFLUX_END);
-        
+
   **NOTICE**: For best performance you should sort tags by key before sending them to the database.
               The sort should match the results from the [Go bytes.Compare function](https://golang.org/pkg/bytes/#Compare).
  */
@@ -24,7 +24,7 @@
 #define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, k, v
 #define INFLUX_F_FLT(k, v)    IF_TYPE_FIELD_FLOAT, k, (double)v
 #define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (unsigned long long int)v
-#define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, k, (unsigned long long int)v
+#define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, k, (v ? 1 : 0)
 #define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (unsigned long long int)ts
 #define INFLUX_END            IF_TYPE_ARG_END
 
@@ -113,29 +113,27 @@ int post_http(influx_client_t* c, const char* measurement, ...)
 #define _UNTIL(c) _GET_NEXT( if(ch == c) break; )
 #define _GET_NUMBER(n) _GET_NEXT( if(ch >= '0' && ch <= '9') n = n * 10 + (ch - '0'); else break; )
 #define _(c) if((ch = _get_next_char(sock, &iv[0], &len)) != c) break;
-#define _CHECK_LINE(statement) for(;;) {_UNTIL('\n') do { statement } while(false); if(!ch) { ret_code = -10; goto END; } }
+#define _CHECK_LINE(statement1, statement2) for(;;) {_UNTIL('\n') do { statement1 } while(0); if(!ch) { ret_code = -9; goto END; } else { statement2 } }
 
     _UNTIL(' ')_GET_NUMBER(ret_code)
-    if(ret_code == 204) _CHECK_LINE(_('\r')_('\n') goto END;)
-    else _CHECK_LINE(
+    _CHECK_LINE(
         _('C')_('o')_('n')_('t')_('e')_('n')_('t')_('-')
         _('L')_('e')_('n')_('g')_('t')_('h')_(':')_(' ')
         _GET_NUMBER(content_length)
-        _CHECK_LINE(
-            _('\r')_('\n')
-            // printf("%.*s", (int)(iv[0].iov_len - len), (char*)iv[0].iov_base + len);
-            content_length -= iv[0].iov_len - len;
-            while(content_length) {
-                if((len = recv(sock, iv[0].iov_base, 
-                    content_length < (int)iv[0].iov_len ? content_length : iv[0].iov_len, 0)) < 0) {
-                    ret_code = -9;
-                    goto END;
-                }
-                // printf("%.*s", len, (char*)iv[0].iov_base);
-                content_length -= len;
+    ,
+        _('\r')_('\n')
+        // printf("%.*s", (int)(iv[0].iov_len - len), (char*)iv[0].iov_base + len);
+        content_length -= iv[0].iov_len - len;
+        while(content_length) {
+            if((len = recv(sock, iv[0].iov_base, 
+                content_length < (int)iv[0].iov_len ? content_length : iv[0].iov_len, 0)) < 0) {
+                ret_code = -10;
+                goto END;
             }
-            goto END;
-        )
+            // printf("%.*s", len, (char*)iv[0].iov_base);
+            content_length -= len;
+        }
+        goto END;
     )
 END:
     free(iv[0].iov_base);
@@ -256,7 +254,7 @@ int _format_line(char** buf, const char* measurement, va_list ap)
                     _APPEND("%lldi", i);
                     break;
                 case IF_TYPE_FIELD_BOOLEAN:
-                    i = va_arg(ap, unsigned long long int);
+                    i = va_arg(ap, int);
                     _APPEND("%c", i ? 't' : 'f');
                     break;
                 default:
