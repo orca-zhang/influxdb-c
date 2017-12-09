@@ -63,11 +63,8 @@ int post_http(influx_client_t* c, const char* measurement, ...)
 {
     va_list ap;
     struct iovec iv[2];
-    int len = 0;
     struct sockaddr_in addr;
-    int sock;
-    int ret_code = 0;
-    int content_length = 0;
+    int sock, ret_code = 0, content_length = 0, len = 0;
     char ch;
     
     if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
@@ -109,50 +106,57 @@ int post_http(influx_client_t* c, const char* measurement, ...)
         goto END;
     }
 
-#define _GET_NEXT(statement) for(;;) { if(!(ch = _get_next_char(sock, &iv[0], &len))) { ret_code = -8; goto END; } statement }
-#define _UNTIL(c) _GET_NEXT( if(ch == c) break; )
-#define _GET_NUMBER(n) _GET_NEXT( if(ch >= '0' && ch <= '9') n = n * 10 + (ch - '0'); else break; )
-#define _(c) if((ch = _get_next_char(sock, &iv[0], &len)) != c) break;
-#define _CHECK_LINE(statement1, statement2) for(;;) {_UNTIL('\n') do { statement1 } while(0); if(!ch) { ret_code = -9; goto END; } else { statement2 } }
+#define _GET_NEXT_CHAR() ch = _get_next_char(sock, &iv[0], &len)
+#define _LOOP_NEXT(statement) for(;;) { if(!(_GET_NEXT_CHAR())) { ret_code = -8; goto END; } statement }
+#define _UNTIL(c) _LOOP_NEXT( if(ch == c) break; )
+#define _GET_NUMBER(n) _LOOP_NEXT( if(ch >= '0' && ch <= '9') n = n * 10 + (ch - '0'); else break; )
+#define _(c) if((_GET_NEXT_CHAR()) != c) break;
 
     _UNTIL(' ')_GET_NUMBER(ret_code)
-    _CHECK_LINE(
-        _('C')_('o')_('n')_('t')_('e')_('n')_('t')_('-')
-        _('L')_('e')_('n')_('g')_('t')_('h')_(':')_(' ')
-        _GET_NUMBER(content_length)
-    ,
-        _('\r')_('\n')
-        // printf("%.*s", (int)(iv[0].iov_len - len), (char*)iv[0].iov_base + len);
-        content_length -= iv[0].iov_len - len;
-        while(content_length) {
-            if((len = recv(sock, iv[0].iov_base, 
-                content_length < (int)iv[0].iov_len ? content_length : iv[0].iov_len, 0)) < 0) {
-                ret_code = -10;
+    for(;;) {
+        _UNTIL('\n')
+        switch(_GET_NEXT_CHAR()) {
+            case 'C':_('o')_('n')_('t')_('e')_('n')_('t')_('-')
+                _('L')_('e')_('n')_('g')_('t')_('h')_(':')_(' ')
+                _GET_NUMBER(content_length)
+                break;
+            case '\r':_('\n')
+                // printf("%.*s", (int)(iv[0].iov_len - len), (char*)iv[0].iov_base + len);
+                content_length -= iv[0].iov_len - len;
+                while(content_length > 0) {
+                    if((len = recv(sock, iv[0].iov_base, 
+                        content_length < (int)iv[0].iov_len ? content_length : iv[0].iov_len, 0)) < 0) {
+                        ret_code = -9;
+                        goto END;
+                    }
+                    // printf("%.*s", len, (char*)iv[0].iov_base);
+                    content_length -= len;
+                }
                 goto END;
-            }
-            // printf("%.*s", len, (char*)iv[0].iov_base);
-            content_length -= len;
         }
-        goto END;
-    )
+        if(!ch) {
+            ret_code = -10;
+            goto END;
+        }
+    }
+    ret_code = -11;
 END:
     free(iv[0].iov_base);
     free(iv[1].iov_base);
     return ret_code / 100 == 2 ? 0 : ret_code;
 }
-#undef _GET_NEXT
+#undef _GET_NEXT_CHAR
+#undef _LOOP_NEXT
 #undef _UNTIL
 #undef _GET_NUMBER
 #undef _
-#undef _CHECK_LINE
 
 int send_udp(influx_client_t* c, const char* measurement, ...)
 {
     va_list ap;
     char* line = NULL;
-    int len = 0;
+    int sock, len = 0;
     struct sockaddr_in addr;
-    int sock;
     
     if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         return -1;
@@ -191,15 +195,10 @@ int _format_line(char** buf, const char* measurement, va_list ap)
         }\
     }
 
-    size_t len = 0x100;
-    size_t used = 0;
-    int written = 0;
-
+    size_t len = 0x100, used = 0;
+    int written = 0, type = 0, last_type = 0;
     unsigned long long int i = 0;
     double d = 0.0;
-
-    int type = 0;
-    int last_type = 0;
 
     if(!(*buf = (char*)malloc(len)))
         return -1;
