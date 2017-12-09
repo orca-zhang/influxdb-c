@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../influx4c.hpp"
+#include "../influx4c.h"
 
 TEST (influx4c, _unescape_append)
 {
