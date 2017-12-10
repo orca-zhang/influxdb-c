@@ -23,9 +23,9 @@
 #define INFLUX_TAG(k, v)      IF_TYPE_TAG, k, v
 #define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, k, v
 #define INFLUX_F_FLT(k, v)    IF_TYPE_FIELD_FLOAT, k, (double)v
-#define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (unsigned long long int)v
+#define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (unsigned long long)v
 #define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, k, (v ? 1 : 0)
-#define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (unsigned long long int)ts
+#define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (unsigned long long)ts
 #define INFLUX_END            IF_TYPE_ARG_END
 
 typedef struct _influx_client_t
@@ -52,8 +52,7 @@ char _get_next_char(int sock, struct iovec* iv, int* pos)
 {
     if(*pos < (int)iv->iov_len)
         return *((char*)iv->iov_base + (*pos)++);
-    *pos = recv(sock, iv->iov_base, iv->iov_len, 0);
-    if(*pos < 0)
+    if((*pos = recv(sock, iv->iov_base, iv->iov_len, 0)) < 0)
         return 0;
     iv->iov_len = *pos;
     return *((char*)iv->iov_base + (*pos = 0));
@@ -173,7 +172,7 @@ int send_udp(influx_client_t* c, const char* measurement, ...)
     if(len < 0)
         return -3;
 
-    if(sendto(sock, line, len, 0, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+    if(sendto(sock, line, len, 0, (struct sockaddr *)&addr, sizeof(addr)) < len) {
         free(line);
         return -4;
     }
@@ -197,7 +196,7 @@ int _format_line(char** buf, const char* measurement, va_list ap)
 
     size_t len = 0x100, used = 0;
     int written = 0, type = 0, last_type = 0;
-    unsigned long long int i = 0;
+    unsigned long long i = 0;
     double d = 0.0;
 
     if(!(*buf = (char*)malloc(len)))
@@ -220,7 +219,7 @@ int _format_line(char** buf, const char* measurement, va_list ap)
                 if(type <= IF_TYPE_TAG)
                     goto FAIL;
                 else if(type == IF_TYPE_TIMESTAMP) {
-                    i = va_arg(ap, unsigned long long int);
+                    i = va_arg(ap, unsigned long long);
                     _APPEND(" %lld", i);
                 }
                 else
@@ -249,7 +248,7 @@ int _format_line(char** buf, const char* measurement, va_list ap)
                     _APPEND("%.lf", d);
                     break;
                 case IF_TYPE_FIELD_INTEGER:
-                    i = va_arg(ap, unsigned long long int);
+                    i = va_arg(ap, unsigned long long);
                     _APPEND("%lldi", i);
                     break;
                 case IF_TYPE_FIELD_BOOLEAN:
@@ -260,9 +259,13 @@ int _format_line(char** buf, const char* measurement, va_list ap)
                     goto FAIL;
             }
         }
+        else if (last_type <= IF_TYPE_TAG || last_type >= IF_TYPE_TIMESTAMP)
+            goto FAIL;
         last_type = type;
         type = va_arg(ap, int);
     }
+    if(last_type <= IF_TYPE_TAG)
+        goto FAIL;
     return used;
 FAIL:
     free(*buf);
