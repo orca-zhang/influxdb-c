@@ -234,10 +234,10 @@ int _format_line(char** buf, va_list ap)
                     return -4;
                 break;
             case IF_TYPE_FIELD_STRING:
-                _APPEND("%c", '\"');
+                _APPEND("\"");
                 if(_escaped_append(buf, &len, &used, va_arg(ap, char*), "\""))
                     return -5;
-                _APPEND("%c", '\"');
+                _APPEND("\"");
                 break;
             case IF_TYPE_FIELD_FLOAT:
                 d = va_arg(ap, double);
