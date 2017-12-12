@@ -7,22 +7,21 @@
 
 /*
   Usage:
-    send_udp/post_http(c, "test", 
-        INFLUX_TAG("k", "v"), 
-        INFLUX_F_STR("s", "string"), 
-        INFLUX_F_FLT("f", 28.39), 
-        INFLUX_F_INT("i", 1048576), 
-        INFLUX_F_BOL("b", 1),
-        INFLUX_TS(1512722735522840439),
+    send_udp/post_http(c,
+            INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v2"), INFLUX_F_STR("s", "string"), INFLUX_F_FLT("f", 28.39, 2),
+        INFLUX_NEW_LINE,
+            INFLUX_MEAS("bar"), INFLUX_F_INT("i", 1048576), INFLUX_F_BOL("b", 1), INFLUX_TS(1512722735522840439),
         INFLUX_END);
 
   **NOTICE**: For best performance you should sort tags by key before sending them to the database.
               The sort should match the results from the [Go bytes.Compare function](https://golang.org/pkg/bytes/#Compare).
  */
 
+#define INFLUX_NEW_LINE       IF_TYPE_NEW_LINE
+#define INFLUX_MEAS(m)        IF_TYPE_MEAS, m
 #define INFLUX_TAG(k, v)      IF_TYPE_TAG, k, v
 #define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, k, v
-#define INFLUX_F_FLT(k, v)    IF_TYPE_FIELD_FLOAT, k, (double)v
+#define INFLUX_F_FLT(k, v, p) IF_TYPE_FIELD_FLOAT, k, (double)v, (int)p
 #define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (unsigned long long)v
 #define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, k, (v ? 1 : 0)
 #define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (unsigned long long)ts
@@ -31,23 +30,27 @@
 typedef struct _influx_client_t
 {
     char* host;
-    int   port;
     char* db;
+    char* usr;
+    char* pwd;
+    int   port;
 } influx_client_t;
 
-int post_http(influx_client_t* c, const char* measurement, ...);
-int send_udp(influx_client_t* c, const char* measurement, ...);
+int post_http(influx_client_t* c, ...);
+int send_udp(influx_client_t* c, ...);
 
 #define IF_TYPE_ARG_END       0
-#define IF_TYPE_TAG           1
-#define IF_TYPE_FIELD_STRING  2
-#define IF_TYPE_FIELD_FLOAT   3
-#define IF_TYPE_FIELD_INTEGER 4
-#define IF_TYPE_FIELD_BOOLEAN 5
-#define IF_TYPE_TIMESTAMP     6
+#define IF_TYPE_NEW_LINE      1
+#define IF_TYPE_MEAS          2
+#define IF_TYPE_TAG           3
+#define IF_TYPE_FIELD_STRING  4
+#define IF_TYPE_FIELD_FLOAT   5
+#define IF_TYPE_FIELD_INTEGER 6
+#define IF_TYPE_FIELD_BOOLEAN 7
+#define IF_TYPE_TIMESTAMP     8
 
-int _unescape_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq);
-int _format_line(char** buf, const char* measurement, va_list ap);
+int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq);
+int _format_line(char** buf, va_list ap);
 char _get_next_char(int sock, struct iovec* iv, int* pos)
 {
     if(*pos < (int)iv->iov_len)
@@ -58,7 +61,7 @@ char _get_next_char(int sock, struct iovec* iv, int* pos)
     return *((char*)iv->iov_base + (*pos = 0));
 }
 
-int post_http(influx_client_t* c, const char* measurement, ...)
+int post_http(influx_client_t* c, ...)
 {
     va_list ap;
     struct iovec iv[2];
@@ -78,8 +81,8 @@ int post_http(influx_client_t* c, const char* measurement, ...)
     if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0)
         return -3;
 
-    va_start(ap, measurement);
-    len = _format_line((char**)&iv[1].iov_base, measurement, ap);
+    va_start(ap, c);
+    len = _format_line((char**)&iv[1].iov_base, ap);
     va_end(ap);
     if(len < 0)
         return -4;
@@ -90,7 +93,7 @@ int post_http(influx_client_t* c, const char* measurement, ...)
         return -5;
     }
     for(;;) {
-        len = snprintf((char*)iv[0].iov_base, iv[0].iov_len, "POST /write?db=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n", c->db, c->host, iv[1].iov_len);
+        len = snprintf((char*)iv[0].iov_base, iv[0].iov_len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n", c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
         if(len > (int)iv[0].iov_len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, iv[0].iov_len *= 2))) {
             free(iv[1].iov_base);
             return -6;
@@ -150,7 +153,7 @@ END:
 #undef _GET_NUMBER
 #undef _
 
-int send_udp(influx_client_t* c, const char* measurement, ...)
+int send_udp(influx_client_t* c, ...)
 {
     va_list ap;
     char* line = NULL;
@@ -166,8 +169,8 @@ int send_udp(influx_client_t* c, const char* measurement, ...)
     if(addr.sin_addr.s_addr == INADDR_NONE)
         return -2;
 
-    va_start(ap, measurement);
-    len = _format_line(&line, measurement, ap);
+    va_start(ap, c);
+    len = _format_line(&line, ap);
     va_end(ap);
     if(len < 0)
         return -3;
@@ -180,11 +183,11 @@ int send_udp(influx_client_t* c, const char* measurement, ...)
     return 0;
 }
 
-int _format_line(char** buf, const char* measurement, va_list ap)
+int _format_line(char** buf, va_list ap)
 {
-#define _APPEND(fmter, arg) \
+#define _APPEND(fmter...) \
     for(;;) {\
-        if((written = snprintf(*buf + used, len - used, fmter, arg)) < 0)\
+        if((written = snprintf(*buf + used, len - used, ##fmter)) < 0)\
             goto FAIL;\
         if(used + written > len && !(*buf = (char*)realloc(*buf, len *= 2)))\
             return -1;\
@@ -195,72 +198,69 @@ int _format_line(char** buf, const char* measurement, va_list ap)
     }
 
     size_t len = 0x100, used = 0;
-    int written = 0, type = 0, last_type = 0;
+    int written = 0, type = 0, last_type = IF_TYPE_NEW_LINE;
     unsigned long long i = 0;
     double d = 0.0;
 
     if(!(*buf = (char*)malloc(len)))
         return -1;
 
-    if(_unescape_append(buf, &len, &used, measurement, ", "))
-        return -2;
-
     type = va_arg(ap, int);
     while(type != IF_TYPE_ARG_END) {
-        switch(last_type) {
-            case 0:
+        if(type >= IF_TYPE_TAG && type <= IF_TYPE_FIELD_BOOLEAN) {
+            if(last_type < IF_TYPE_MEAS || last_type > (type == IF_TYPE_TAG ? IF_TYPE_TAG : IF_TYPE_FIELD_BOOLEAN))
+                goto FAIL;
+            _APPEND("%c", (last_type <= IF_TYPE_TAG && type > IF_TYPE_TAG) ? ' ' : ',');
+            if(_escaped_append(buf, &len, &used, va_arg(ap, char*), ",= "))
+                return -2;
+            _APPEND("=");
+        }
+        switch(type) {
+            case IF_TYPE_NEW_LINE:
+                if(last_type <= IF_TYPE_TAG || last_type > IF_TYPE_TIMESTAMP)
+                    goto FAIL;
+                _APPEND("\n");
+                break;
+            case IF_TYPE_MEAS:
+                if(last_type != IF_TYPE_NEW_LINE)
+                    goto FAIL;
+                if(_escaped_append(buf, &len, &used, va_arg(ap, char*), ", "))
+                    return -3;
+                break;
             case IF_TYPE_TAG:
-                _APPEND("%c", type == IF_TYPE_TAG ? ',' : ' ');
+                if(!(last_type & 0x02))
+                    goto FAIL;
+                if(_escaped_append(buf, &len, &used, va_arg(ap, char*), ",= "))
+                    return -4;
                 break;
             case IF_TYPE_FIELD_STRING:
+                _APPEND("%c", '\"');
+                if(_escaped_append(buf, &len, &used, va_arg(ap, char*), "\""))
+                    return -5;
+                _APPEND("%c", '\"');
+                break;
             case IF_TYPE_FIELD_FLOAT:
+                d = va_arg(ap, double);
+                i = va_arg(ap, int);
+                _APPEND("%.*lf", (int)i, d);
+                break;
             case IF_TYPE_FIELD_INTEGER:
+                i = va_arg(ap, unsigned long long);
+                _APPEND("%lldi", i);
+                break;
             case IF_TYPE_FIELD_BOOLEAN:
-                if(type <= IF_TYPE_TAG)
+                i = va_arg(ap, int);
+                _APPEND("%c", i ? 't' : 'f');
+                break;
+            case IF_TYPE_TIMESTAMP:
+                if(!(last_type & 0x04))
                     goto FAIL;
-                else if(type == IF_TYPE_TIMESTAMP) {
-                    i = va_arg(ap, unsigned long long);
-                    _APPEND(" %lld", i);
-                }
-                else
-                    _APPEND("%c", ',');
+                i = va_arg(ap, unsigned long long);
+                _APPEND(" %lld", i);
                 break;
             default:
                 goto FAIL;
         }
-        if(type != IF_TYPE_TIMESTAMP) {
-            if(_unescape_append(buf, &len, &used, va_arg(ap, char*), ",= "))
-                return -3;
-            _APPEND("%c", '=');
-            switch(type) {
-                case IF_TYPE_TAG:
-                    if(_unescape_append(buf, &len, &used, va_arg(ap, char*), ",= "))
-                        return -4;
-                    break;
-                case IF_TYPE_FIELD_STRING:
-                    _APPEND("%c", '\"');
-                    if(_unescape_append(buf, &len, &used, va_arg(ap, char*), "\""))
-                        return -5;
-                    _APPEND("%c", '\"');
-                    break;
-                case IF_TYPE_FIELD_FLOAT:
-                    d = va_arg(ap, double);
-                    _APPEND("%.lf", d);
-                    break;
-                case IF_TYPE_FIELD_INTEGER:
-                    i = va_arg(ap, unsigned long long);
-                    _APPEND("%lldi", i);
-                    break;
-                case IF_TYPE_FIELD_BOOLEAN:
-                    i = va_arg(ap, int);
-                    _APPEND("%c", i ? 't' : 'f');
-                    break;
-                default:
-                    goto FAIL;
-            }
-        }
-        else if (last_type <= IF_TYPE_TAG || last_type >= IF_TYPE_TIMESTAMP)
-            goto FAIL;
         last_type = type;
         type = va_arg(ap, int);
     }
@@ -274,7 +274,7 @@ FAIL:
 }
 #undef _APPEND
 
-int _unescape_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq)
+int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq)
 {
     size_t i = 0;
 
