@@ -11,17 +11,17 @@
             INFLUX_MEAS("foo"),
             INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v2"),
             INFLUX_F_STR("s", "string"), INFLUX_F_FLT("f", 28.39, 2),
-        INFLUX_NEW_LINE,
+
             INFLUX_MEAS("bar"),
             INFLUX_F_INT("i", 1048576), INFLUX_F_BOL("b", 1),
             INFLUX_TS(1512722735522840439),
-        INFLUX_END);
+
+            INFLUX_END);
 
   **NOTICE**: For best performance you should sort tags by key before sending them to the database.
               The sort should match the results from the [Go bytes.Compare function](https://golang.org/pkg/bytes/#Compare).
  */
 
-#define INFLUX_NEW_LINE       IF_TYPE_NEW_LINE
 #define INFLUX_MEAS(m)        IF_TYPE_MEAS, m
 #define INFLUX_TAG(k, v)      IF_TYPE_TAG, k, v
 #define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, k, v
@@ -44,14 +44,13 @@ int post_http(influx_client_t* c, ...);
 int send_udp(influx_client_t* c, ...);
 
 #define IF_TYPE_ARG_END       0
-#define IF_TYPE_NEW_LINE      1
-#define IF_TYPE_MEAS          2
-#define IF_TYPE_TAG           3
-#define IF_TYPE_FIELD_STRING  4
-#define IF_TYPE_FIELD_FLOAT   5
-#define IF_TYPE_FIELD_INTEGER 6
-#define IF_TYPE_FIELD_BOOLEAN 7
-#define IF_TYPE_TIMESTAMP     8
+#define IF_TYPE_MEAS          1
+#define IF_TYPE_TAG           2
+#define IF_TYPE_FIELD_STRING  3
+#define IF_TYPE_FIELD_FLOAT   4
+#define IF_TYPE_FIELD_INTEGER 5
+#define IF_TYPE_FIELD_BOOLEAN 6
+#define IF_TYPE_TIMESTAMP     7
 
 int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq);
 int _format_line(char** buf, va_list ap);
@@ -184,7 +183,7 @@ int _format_line(char** buf, va_list ap)
     }
 
     size_t len = 0x100, used = 0;
-    int written = 0, type = 0, last_type = IF_TYPE_NEW_LINE;
+    int written = 0, type = 0, last_type = 0;
     unsigned long long i = 0;
     double d = 0.0;
 
@@ -202,13 +201,10 @@ int _format_line(char** buf, va_list ap)
             _APPEND("=");
         }
         switch(type) {
-            case IF_TYPE_NEW_LINE:
-                if(last_type <= IF_TYPE_TAG || last_type > IF_TYPE_TIMESTAMP)
-                    goto FAIL;
-                _APPEND("\n");
-                break;
             case IF_TYPE_MEAS:
-                if(last_type != IF_TYPE_NEW_LINE)
+                if(last_type)
+                    _APPEND("\n");
+                if(last_type && last_type <= IF_TYPE_TAG)
                     goto FAIL;
                 if(_escaped_append(buf, &len, &used, va_arg(ap, char*), ", "))
                     return -3;
@@ -237,7 +233,7 @@ int _format_line(char** buf, va_list ap)
                 _APPEND("%c", i ? 't' : 'f');
                 break;
             case IF_TYPE_TIMESTAMP:
-                if(!(last_type & 0x04))
+                if(last_type < IF_TYPE_FIELD_STRING || last_type > IF_TYPE_FIELD_BOOLEAN)
                     goto FAIL;
                 i = va_arg(ap, unsigned long long);
                 _APPEND(" %lld", i);
