@@ -55,15 +55,6 @@ int send_udp(influx_client_t* c, ...);
 
 int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq);
 int _format_line(char** buf, va_list ap);
-char _get_next_char(int sock, struct iovec* iv, int* pos)
-{
-    if(*pos < (int)iv->iov_len)
-        return *((char*)iv->iov_base + (*pos)++);
-    if((*pos = recv(sock, iv->iov_base, iv->iov_len, 0)) < 0)
-        return 0;
-    iv->iov_len = *pos;
-    return *((char*)iv->iov_base + (*pos = 0));
-}
 
 int post_http(influx_client_t* c, ...)
 {
@@ -96,7 +87,8 @@ int post_http(influx_client_t* c, ...)
         return -5;
     }
     for(;;) {
-        iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n", c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
+        iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n",
+            c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
         if((int)iv[0].iov_len > len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
             free(iv[1].iov_base);
             return -6;
@@ -111,7 +103,9 @@ int post_http(influx_client_t* c, ...)
     }
     iv[0].iov_len = len;
 
-#define _GET_NEXT_CHAR() ch = _get_next_char(sock, &iv[0], &len)
+#define _GET_NEXT_CHAR() (ch = (len >= (int)iv[0].iov_len && \
+    (iv[0].iov_len = recv(sock, iv[0].iov_base, iv[0].iov_len, len = 0)) == size_t(-1) ? \
+     0 : *((char*)iv[0].iov_base + len++)))
 #define _LOOP_NEXT(statement) for(;;) { if(!(_GET_NEXT_CHAR())) { ret_code = -8; goto END; } statement }
 #define _UNTIL(c) _LOOP_NEXT( if(ch == c) break; )
 #define _GET_NUMBER(n) _LOOP_NEXT( if(ch >= '0' && ch <= '9') n = n * 10 + (ch - '0'); else break; )
@@ -126,17 +120,7 @@ int post_http(influx_client_t* c, ...)
                 _GET_NUMBER(content_length)
                 break;
             case '\r':_('\n')
-                // printf("%.*s", (int)(iv[0].iov_len - len), (char*)iv[0].iov_base + len);
-                content_length -= iv[0].iov_len - len;
-                while(content_length > 0) {
-                    if((len = recv(sock, iv[0].iov_base, 
-                        content_length < (int)iv[0].iov_len ? content_length : iv[0].iov_len, 0)) < 0) {
-                        ret_code = -9;
-                        goto END;
-                    }
-                    // printf("%.*s", len, (char*)iv[0].iov_base);
-                    content_length -= len;
-                }
+                while(content_length-- > 0 && _GET_NEXT_CHAR());// printf("%c", ch);
                 goto END;
         }
         if(!ch) {
