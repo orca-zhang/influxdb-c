@@ -8,9 +8,13 @@
 /*
   Usage:
     send_udp/post_http(c,
-            INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v2"), INFLUX_F_STR("s", "string"), INFLUX_F_FLT("f", 28.39, 2),
+            INFLUX_MEAS("foo"),
+            INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v2"),
+            INFLUX_F_STR("s", "string"), INFLUX_F_FLT("f", 28.39, 2),
         INFLUX_NEW_LINE,
-            INFLUX_MEAS("bar"), INFLUX_F_INT("i", 1048576), INFLUX_F_BOL("b", 1), INFLUX_TS(1512722735522840439),
+            INFLUX_MEAS("bar"),
+            INFLUX_F_INT("i", 1048576), INFLUX_F_BOL("b", 1),
+            INFLUX_TS(1512722735522840439),
         INFLUX_END);
 
   **NOTICE**: For best performance you should sort tags by key before sending them to the database.
@@ -30,10 +34,10 @@
 typedef struct _influx_client_t
 {
     char* host;
-    char* db;
-    char* usr;
-    char* pwd;
     int   port;
+    char* db;  // http only
+    char* usr; // http only [optional for auth]
+    char* pwd; // http only [optional for auth]
 } influx_client_t;
 
 int post_http(influx_client_t* c, ...);
@@ -74,8 +78,7 @@ int post_http(influx_client_t* c, ...)
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
-    addr.sin_addr.s_addr = inet_addr(c->host);
-    if(addr.sin_addr.s_addr == INADDR_NONE)
+    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
         return -2;
 
     if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0)
@@ -88,25 +91,25 @@ int post_http(influx_client_t* c, ...)
         return -4;
     iv[1].iov_len = len;
 
-    if(!(iv[0].iov_base = (char*)malloc(iv[0].iov_len = 0x100))) {
+    if(!(iv[0].iov_base = (char*)malloc(len = 0x100))) {
         free(iv[1].iov_base);
         return -5;
     }
     for(;;) {
-        len = snprintf((char*)iv[0].iov_base, iv[0].iov_len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n", c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
-        if(len > (int)iv[0].iov_len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, iv[0].iov_len *= 2))) {
+        iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n", c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
+        if((int)iv[0].iov_len > len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
             free(iv[1].iov_base);
             return -6;
         }
         else
             break;
     }
-    iv[0].iov_len = len;
 
     if(writev(sock, iv, 2) < (int)(iv[0].iov_len + iv[1].iov_len)) {
         ret_code = -7;
         goto END;
     }
+    iv[0].iov_len = len;
 
 #define _GET_NEXT_CHAR() ch = _get_next_char(sock, &iv[0], &len)
 #define _LOOP_NEXT(statement) for(;;) { if(!(_GET_NEXT_CHAR())) { ret_code = -8; goto END; } statement }
@@ -165,8 +168,7 @@ int send_udp(influx_client_t* c, ...)
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
-    addr.sin_addr.s_addr = inet_addr(c->host);
-    if(addr.sin_addr.s_addr == INADDR_NONE)
+    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
         return -2;
 
     va_start(ap, c);
@@ -228,8 +230,6 @@ int _format_line(char** buf, va_list ap)
                     return -3;
                 break;
             case IF_TYPE_TAG:
-                if(!(last_type & 0x02))
-                    goto FAIL;
                 if(_escaped_append(buf, &len, &used, va_arg(ap, char*), ",= "))
                     return -4;
                 break;
