@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <string.h>
+#include <unistd.h>
 
 /*
   Usage:
@@ -62,38 +63,40 @@ int post_http(influx_client_t* c, ...)
     struct sockaddr_in addr;
     int sock, ret_code = 0, content_length = 0, len = 0;
     char ch;
-    
-    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
-        return -1;
-
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(c->port);
-    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
-        return -2;
-
-    if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0)
-        return -3;
 
     va_start(ap, c);
     len = _format_line((char**)&iv[1].iov_base, ap);
     va_end(ap);
     if(len < 0)
-        return -4;
+        return -1;
     iv[1].iov_len = len;
 
     if(!(iv[0].iov_base = (char*)malloc(len = 0x100))) {
         free(iv[1].iov_base);
-        return -5;
+        return -2;
     }
     for(;;) {
         iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n",
             c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
         if((int)iv[0].iov_len > len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
             free(iv[1].iov_base);
-            return -6;
+            return -3;
         }
         else
             break;
+    }
+
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(c->port);
+    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
+        return -4;
+
+    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+        return -5;
+
+    if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0) {
+        close(sock);
+        return -6;
     }
 
     if(writev(sock, iv, 2) < (int)(iv[0].iov_len + iv[1].iov_len)) {
@@ -129,6 +132,7 @@ int post_http(influx_client_t* c, ...)
     }
     ret_code = -11;
 END:
+    close(sock);
     free(iv[0].iov_base);
     free(iv[1].iov_base);
     return ret_code / 100 == 2 ? 0 : ret_code;
@@ -143,29 +147,29 @@ int send_udp(influx_client_t* c, ...)
 {
     va_list ap;
     char* line = NULL;
-    int sock, len = 0;
+    int sock, len = 0, ret = 0;
     struct sockaddr_in addr;
-    
-    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
+
+    va_start(ap, c);
+    len = _format_line(&line, ap);
+    va_end(ap);
+    if(len < 0)
         return -1;
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
     if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
         return -2;
-
-    va_start(ap, c);
-    len = _format_line(&line, ap);
-    va_end(ap);
-    if(len < 0)
+    
+    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
         return -3;
 
-    if(sendto(sock, line, len, 0, (struct sockaddr *)&addr, sizeof(addr)) < len) {
-        free(line);
-        return -4;
-    }
+    if(sendto(sock, line, len, 0, (struct sockaddr *)&addr, sizeof(addr)) < len)
+        ret = -4;
+
+    close(sock);
     free(line);
-    return 0;
+    return ret;
 }
 
 int _format_line(char** buf, va_list ap)
