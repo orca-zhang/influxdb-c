@@ -1,8 +1,12 @@
 # influxdb-c
 
-A header-only write C client for InfluxDB.
+A header-only C write client for InfluxDB.
 
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/influxdb-c/blob/master/LICENSE)
+
+- Support versions:
+  - InfluxDB v0.9 ~ v1.4
+  - Check yourself while using other versions.
 
 ### Why use influxdb-c?
 
@@ -36,7 +40,7 @@ A header-only write C client for InfluxDB.
 
 - You can rapidly start writing serires by according to the following example.
 
-- Client initialization:
+- Client configurations:
 
     ```c
     influx_client_t c;
@@ -59,7 +63,7 @@ A header-only write C client for InfluxDB.
     };
     ```
 
-- Then, just send out:
+- Then send out the series by calling `post_http`:
 
     ```c
     post_http(&c,
@@ -75,14 +79,14 @@ A header-only write C client for InfluxDB.
     ```
 
   - **NOTE**:
-    - 3rd parameter of `INFLUX_F_FLT()` is `precision` for floating field value.
+    - 3rd parameter of `INFLUX_F_FLT()` is `precision` for floating point value.
     - `usr` and `pwd` is optional for authorization.
     - `INFLUX_END` is the delimiter for variable arguments list, and it **should not be ommitted**.
 
-- The series to be send is like:
+- The series to be send are like:
 
     ```
-    foo,k=v,x=y x=10i y=10.30 y=10.35 b=t 1512722735522840439
+    foo,k=v,x=y x=10i,y=10.30,y=10.35,b=t 1512722735522840439
     ```
 
 - You could change `post_http` to `send_udp` for udp request. Only `host` and `port` is required for udp.
@@ -103,12 +107,14 @@ A header-only write C client for InfluxDB.
     send_udp(&c,
         INFLUX_MEAS("foo"),
         INFLUX_F_INT("x", 10),
+
         INFLUX_MEAS("foo"),
         INFLUX_F_FLT("y", 10.3, 2),
+
         INFLUX_END);
     ```
 
-- The series to be send is like:
+- The series to be send are like:
 
     ```
     foo x=10i
@@ -125,4 +131,4 @@ A header-only write C client for InfluxDB.
 
 - Please feel free to use influxdb-c.
 - Looking forward to your suggestions.
-- If your project is using influxdb-c, you can show your project or company here by creating a issue or let we know.
+- If your project is using influxdb-c, you can show your project or company here by creating a issue or let me know.
