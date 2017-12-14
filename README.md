@@ -36,6 +36,8 @@ A header-only write C client for InfluxDB.
 
 - You can rapidly start writing serires by according to the following example.
 
+- Client initialization:
+
     ```c
     influx_client_t c;
     c.host = strdup("127.0.0.1");
@@ -43,7 +45,23 @@ A header-only write C client for InfluxDB.
     c.db = strdup("db");
     c.usr = strdup("usr");
     c.pwd = strdup("pwd");
+    ```
 
+- Under C99, you can use:
+
+    ```c
+    influx_client_t c = {
+        .host = strdup("127.0.0.1"),
+        .port = 8086,
+        .db = strdup("db"),
+        .usr = strdup("usr"),
+        .pwd = strdup("pwd")
+    };
+    ```
+
+- Then, just send out:
+
+    ```c
     post_http(&c,
         INFLUX_MEAS("foo"),
         INFLUX_TAG("k", "v"),
@@ -70,10 +88,7 @@ A header-only write C client for InfluxDB.
 - You could change `post_http` to `send_udp` for udp request. Only `host` and `port` is required for udp.
 
     ```c
-    influx_client_t c;
-    c.host = strdup("127.0.0.1");
-    c.port = 8091;
-    c.db = c.usr = c.pwd = NULL;
+    influx_client_t c = {strdup("127.0.0.1"), 8091, NULL, NULL, NULL};
 
     send_udp(&c,
         INFLUX_MEAS("foo"),
