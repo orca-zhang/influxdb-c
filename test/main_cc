@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "../influx4c.h"
+#include "../influxdb.h"
 
-TEST (influxdb4c, _escaped_append)
+TEST (influxdb_c, _escaped_append)
 {
     size_t len = 20;
     size_t used = 0;
@@ -43,7 +43,7 @@ int format_line(char** line, ...)
     return len;
 }
 
-TEST (influxdb4c, format_line)
+TEST (influxdb_c, format_line)
 {
     char* line = NULL;
     ASSERT_TRUE(format_line(&line,
@@ -478,7 +478,7 @@ TEST (influxdb4c, format_line)
     free(line);
 }
 
-TEST (influxdb4c, DISABLED_send_udp)
+TEST (influxdb_c, DISABLED_send_udp)
 {
     influx_client_t c;
     c.host = strdup("127.0.0.1");
@@ -499,7 +499,7 @@ TEST (influxdb4c, DISABLED_send_udp)
     free(c.pwd);
 }
 
-TEST (influxdb4c, DISABLED_post_http)
+TEST (influxdb_c, DISABLED_post_http)
 {
     influx_client_t c;
     c.host = strdup("127.0.0.1");
