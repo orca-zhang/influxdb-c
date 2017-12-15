@@ -3,6 +3,7 @@
 A header-only C write client for InfluxDB.
 
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/influxdb-c/blob/master/LICENSE)
+[![Build Status](https://semaphoreci.com/api/v1/orca-zhang-91/influxdb-c/branches/master/shields_badge.svg)](https://semaphoreci.com/orca-zhang-91/influxdb-c)
 
 - Support versions:
   - InfluxDB v0.9 ~ v1.4
@@ -81,9 +82,9 @@ A header-only C write client for InfluxDB.
   - **NOTE**:
     - 3rd parameter of `INFLUX_F_FLT()` is `precision` for floating point value.
     - `usr` and `pwd` is optional for authorization.
-    - `INFLUX_END` is the delimiter for variable arguments list, and it **should not be ommitted**.
+    - `INFLUX_END` is the delimiter for variable arguments list that **should not be ommitted**.
 
-- The series to be send are like:
+- The series sent is:
 
     ```
     foo,k=v,x=y x=10i,y=10.30,y=10.35,b=t 1512722735522840439
@@ -114,7 +115,7 @@ A header-only C write client for InfluxDB.
         INFLUX_END);
     ```
 
-- The series to be send are like:
+- The series sent are:
 
     ```
     foo x=10i
