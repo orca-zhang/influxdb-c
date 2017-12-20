@@ -27,9 +27,9 @@
 #define INFLUX_TAG(k, v)      IF_TYPE_TAG, k, v
 #define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, k, v
 #define INFLUX_F_FLT(k, v, p) IF_TYPE_FIELD_FLOAT, k, (double)v, (int)p
-#define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (unsigned long long)v
+#define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (long long)v
 #define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, k, (v ? 1 : 0)
-#define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (unsigned long long)ts
+#define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (long long)ts
 #define INFLUX_END            IF_TYPE_ARG_END
 
 typedef struct _influx_client_t
@@ -229,7 +229,7 @@ int _format_line(char** buf, va_list ap)
                 _APPEND("%.*lf", (int)i, d);
                 break;
             case IF_TYPE_FIELD_INTEGER:
-                i = va_arg(ap, unsigned long long);
+                i = va_arg(ap, long long);
                 _APPEND("%lldi", i);
                 break;
             case IF_TYPE_FIELD_BOOLEAN:
@@ -239,7 +239,7 @@ int _format_line(char** buf, va_list ap)
             case IF_TYPE_TIMESTAMP:
                 if(last_type < IF_TYPE_FIELD_STRING || last_type > IF_TYPE_FIELD_BOOLEAN)
                     goto FAIL;
-                i = va_arg(ap, unsigned long long);
+                i = va_arg(ap, long long);
                 _APPEND(" %lld", i);
                 break;
             default:
