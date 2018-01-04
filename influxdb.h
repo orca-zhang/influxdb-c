@@ -4,6 +4,7 @@
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdio.h>
 #include <unistd.h>
 
 /*
@@ -158,16 +159,21 @@ int send_udp(influx_client_t* c, ...)
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
-    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
-        return -2;
-    
-    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
-        return -3;
+    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE) {
+        ret = -2;
+        goto END;
+    }
+
+    if((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        ret = -3;
+        goto END;
+    }
 
     if(sendto(sock, line, len, 0, (struct sockaddr *)&addr, sizeof(addr)) < len)
         ret = -4;
 
     close(sock);
+END:
     free(line);
     return ret;
 }

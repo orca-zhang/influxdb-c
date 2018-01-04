@@ -11,7 +11,7 @@ file(REMOVE_RECURSE ./tmp)
 
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 
-LINK_LIBRARIES(gtest pthread)
+LINK_LIBRARIES(mockcpp /usr/local/lib/libgtest.so pthread)
 
 SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
