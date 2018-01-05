@@ -11,14 +11,16 @@ A header-only C write client for InfluxDB.
 
 ### Why use influxdb-c?
 
-- **Exactly-small**: 
+- **Exactly small**:
   - Less than 300 lines and only about 10KB.
-- **Easy-to-use**: 
+- **Easy to use**:
   - It's designed to be used without extra studies.
-- **Easy-to-assemble**: 
+- **Easy to assemble**:
   - Only a tiny header file needs to be included.
-- **No-dependencies**: 
+- **No dependencies**:
   - Unless std C libraries.
+- **Under seriously testing**:
+  - Use gtest & [mockcpp](https://github.com/ez8-co/mockcpp)
 
 ### Examples
 
@@ -90,7 +92,7 @@ A header-only C write client for InfluxDB.
     foo,k=v,x=y x=10i,y=10.30,y=10.35,b=t 1512722735522840439
     ```
 
-- You could change `post_http` to `send_udp` for udp request. Only `host` and `port` is required for udp.
+- You could change `post_http` to `send_udp` for udp request. And only `host` and `port` is required for udp.
 
     ```c
     influx_client_t c = {strdup("127.0.0.1"), 8091, NULL, NULL, NULL};
@@ -106,10 +108,10 @@ A header-only C write client for InfluxDB.
 
     ```c
     send_udp(&c,
-        INFLUX_MEAS("foo"),
+        INFLUX_MEAS("foo"),  // series 1
         INFLUX_F_INT("x", 10),
 
-        INFLUX_MEAS("foo"),
+        INFLUX_MEAS("foo"),  // series 2
         INFLUX_F_FLT("y", 10.3, 2),
 
         INFLUX_END);
@@ -127,6 +129,7 @@ A header-only C write client for InfluxDB.
 - Add more test cases for send functions.
 - Supports DSN initializatin for influx_client_t.
 - Add query function.
+- Do not need to connect every time.
 
 ### Misc
 
