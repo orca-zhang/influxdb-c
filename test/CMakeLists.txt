@@ -3,15 +3,11 @@ CMAKE_POLICY(VERSION 2.8)
 
 PROJECT(influxdb_c_ut)
 
-file(REMOVE_RECURSE ./tmp)
-file(COPY main_cc DESTINATION ./tmp)
-file(RENAME ./tmp/main_cc ./tmp/main.cc)
-file(COPY ./tmp/main.cc DESTINATION .)
-file(REMOVE_RECURSE ./tmp)
+FILE(GENERATE OUTPUT main.cc INPUT main_cc)
 
 AUX_SOURCE_DIRECTORY(. DIR_SRCS)
 
-LINK_LIBRARIES(mockcpp gtest pthread)
+LINK_LIBRARIES(emock /usr/local/lib/libgtest.a pthread)
 
 SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")

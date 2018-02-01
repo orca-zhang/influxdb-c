@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <mockcpp/mockcpp.hpp>
+#include <emock/emock.hpp>
 #include <iostream>
 #include <list>
 using namespace std;
@@ -492,7 +492,7 @@ TEST (influxdb_c, send_udp)
     c.pwd = strdup("test");
 
     // case 1: _format_line < 0
-    MOCKER(_format_line)
+    EMOCK(_format_line)
         .stubs()
         .with(any(), any())
         .will(returnValue(-1));
@@ -505,7 +505,7 @@ TEST (influxdb_c, send_udp)
     GlobalMockObject::verify();
 
     // case 2: inet_addr return INADDR_NONE
-    MOCKER(inet_addr)
+    EMOCK(inet_addr)
         .stubs()
         .with(any())
         .will(returnValue(INADDR_NONE));
@@ -518,7 +518,7 @@ TEST (influxdb_c, send_udp)
     GlobalMockObject::verify();
 
     // case 3: socket < 0
-    MOCKER(socket)
+    EMOCK(socket)
         .stubs()
         .with(any(), any(), any())
         .will(returnValue(-1));
@@ -531,7 +531,7 @@ TEST (influxdb_c, send_udp)
     GlobalMockObject::verify();
 
     // case 4: sendto < 0
-    MOCKER(sendto)
+    EMOCK(sendto)
         .stubs()
         .with(any(), any(), any(), any(), any(), any())
         .will(returnValue(-1));
@@ -545,7 +545,7 @@ TEST (influxdb_c, send_udp)
 
     // case 5: sendto < len
     int len = 0;
-    MOCKER(sendto)
+    EMOCK(sendto)
         .stubs()
         .with(any(), any(), spy(len), any(), any(), any())
         .will(returnValue(len - 1));
@@ -558,7 +558,7 @@ TEST (influxdb_c, send_udp)
     GlobalMockObject::verify();
 
     // case 6: sendto = len
-    MOCKER(sendto)
+    EMOCK(sendto)
         .stubs()
         .with(any(), any(), spy(len), any(), any(), any())
         .will(returnValue(len));
@@ -603,7 +603,7 @@ TEST (influxdb_c, post_http)
     c.pwd = strdup("test");
 
     // case 1: _format_line < 0
-    MOCKER(_format_line)
+    EMOCK(_format_line)
         .stubs()
         .with(any(), any())
         .will(returnValue(-1));
@@ -616,7 +616,7 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 2: inet_addr return INADDR_NONE
-    MOCKER(inet_addr)
+    EMOCK(inet_addr)
         .stubs()
         .with(any())
         .will(returnValue(INADDR_NONE));
@@ -629,7 +629,7 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 3: socket < 0
-    MOCKER(socket)
+    EMOCK(socket)
         .stubs()
         .with(any(), any(), any())
         .will(returnValue(-1));
@@ -642,7 +642,7 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 4: connect < 0
-    MOCKER(connect)
+    EMOCK(connect)
         .stubs()
         .with(any(), any(), any())
         .will(returnValue(-1));
@@ -655,10 +655,10 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 5: writev < 0
-    MOCKER(connect)
+    EMOCK(connect)
         .stubs()
         .will(returnValue(0));
-    MOCKER(writev)
+    EMOCK(writev)
         .stubs()
         .with(any(), any(), any())
         .will(returnValue(-1));
@@ -671,10 +671,10 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 6: writev < len
-    MOCKER(connect)
+    EMOCK(connect)
         .stubs()
         .will(returnValue(0));
-    MOCKER(writev)
+    EMOCK(writev)
         .stubs()
         .with(any(), any(), eq(2))
         .will(invoke(writev_mock_err));
@@ -687,14 +687,14 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 7: writev = len
-    MOCKER(connect)
+    EMOCK(connect)
         .stubs()
         .will(returnValue(0));
-    MOCKER(writev)
+    EMOCK(writev)
         .stubs()
         .with(any(), any(), eq(2))
         .will(invoke(writev_mock));
-    MOCKER(recv)
+    EMOCK(recv)
         .stubs()
         .with(any(), any(), any(), any())
         .will(returnValue(-1));
@@ -707,14 +707,14 @@ TEST (influxdb_c, post_http)
     GlobalMockObject::verify();
 
     // case 8: return status_code
-    MOCKER(connect)
+    EMOCK(connect)
         .stubs()
         .will(returnValue(0));
-    MOCKER(writev)
+    EMOCK(writev)
         .stubs()
         .with(any(), any(), eq(2))
         .will(invoke(writev_mock));
-    MOCKER(recv)
+    EMOCK(recv)
         .stubs()
         .with(any(), any(), any(), any())
         .will(invoke(recv_mock));
