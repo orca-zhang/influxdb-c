@@ -8,7 +8,7 @@ FILE(RENAME ./tmp/main_cc ./tmp/main.cc)
 FILE(COPY ./tmp/main.cc DESTINATION .)
 FILE(REMOVE_RECURSE ./tmp)
 
-LINK_LIBRARIES(emock /usr/local/lib/libgtest.a pthread dl)
+LINK_LIBRARIES(emock gtest gtest_main pthread dl)
 
 SET(CMAKE_BUILD_TYPE "Debug")
 SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb")
