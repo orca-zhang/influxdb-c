@@ -24,13 +24,13 @@
               The sort should match the results from the [Go bytes.Compare function](https://golang.org/pkg/bytes/#Compare).
  */
 
-#define INFLUX_MEAS(m)        IF_TYPE_MEAS, m
-#define INFLUX_TAG(k, v)      IF_TYPE_TAG, k, v
-#define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, k, v
-#define INFLUX_F_FLT(k, v, p) IF_TYPE_FIELD_FLOAT, k, (double)v, (int)p
-#define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, k, (long long)v
-#define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, k, (v ? 1 : 0)
-#define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (long long)ts
+#define INFLUX_MEAS(m)        IF_TYPE_MEAS, (m)
+#define INFLUX_TAG(k, v)      IF_TYPE_TAG, (k), (v)
+#define INFLUX_F_STR(k, v)    IF_TYPE_FIELD_STRING, (k), (v)
+#define INFLUX_F_FLT(k, v, p) IF_TYPE_FIELD_FLOAT, (k), (double)(v), (int)(p)
+#define INFLUX_F_INT(k, v)    IF_TYPE_FIELD_INTEGER, (k), (long long)(v)
+#define INFLUX_F_BOL(k, v)    IF_TYPE_FIELD_BOOLEAN, (k), ((v) ? 1 : 0)
+#define INFLUX_TS(ts)         IF_TYPE_TIMESTAMP, (long long)(ts)
 #define INFLUX_END            IF_TYPE_ARG_END
 
 typedef struct _influx_client_t
@@ -107,7 +107,7 @@ int post_http(influx_client_t* c, ...)
     iv[0].iov_len = len;
 
 #define _GET_NEXT_CHAR() (ch = (len >= (int)iv[0].iov_len && \
-    (iv[0].iov_len = recv(sock, iv[0].iov_base, iv[0].iov_len, len = 0)) == size_t(-1) ? \
+    (iv[0].iov_len = recv(sock, iv[0].iov_base, iv[0].iov_len, len = 0)) == (size_t)(-1) ? \
      0 : *((char*)iv[0].iov_base + len++)))
 #define _LOOP_NEXT(statement) for(;;) { if(!(_GET_NEXT_CHAR())) { ret_code = -8; goto END; } statement }
 #define _UNTIL(c) _LOOP_NEXT( if(ch == c) break; )
