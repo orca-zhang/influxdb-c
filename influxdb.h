@@ -57,7 +57,7 @@ int send_udp(influx_client_t* c, ...);
 int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq);
 int _format_line(char** buf, va_list ap);
 
-static int post_http(influx_client_t* c, ...)
+int post_http(influx_client_t* c, ...)
 {
     va_list ap;
     struct iovec iv[2];
@@ -144,7 +144,7 @@ END:
 #undef _GET_NUMBER
 #undef _
 
-static int send_udp(influx_client_t* c, ...)
+int send_udp(influx_client_t* c, ...)
 {
     va_list ap;
     char* line = NULL;
@@ -178,7 +178,7 @@ END:
     return ret;
 }
 
-static int _format_line(char** buf, va_list ap)
+int _format_line(char** buf, va_list ap)
 {
 #define _APPEND(fmter...) \
     for(;;) {\
@@ -264,7 +264,7 @@ FAIL:
 }
 #undef _APPEND
 
-static int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq)
+int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq)
 {
     size_t i = 0;
 
