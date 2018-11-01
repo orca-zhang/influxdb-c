@@ -124,6 +124,27 @@ A header-only C write client for InfluxDB.
     bar y=10.30
     ```
 
+- If bulk writes should be done from within a loop, one has to format
+  each measurement separately, then at the end send the formatted line to
+  the database. This example sends 10 measurements:
+
+  ```c
+  influx_client_t c = {strdup("127.0.0.1"), 8091, NULL, NULL, NULL};
+  char *line = NULL;
+  int len = 0;
+  int used = 0;
+
+  for (int i = 0; i < 10; ++i) {
+      used = format_line(line, &len, used,
+          INFLUX_MEAS("foo"),
+          INFLUX_TAG("k", "v"),
+          INFLUX_F_INT("x", i),
+          INFLUX_END);
+  }
+
+  post_http_send_line(&c, line, used);
+  ```
+
 ### TODO
 
 - Add more test cases for send functions.
