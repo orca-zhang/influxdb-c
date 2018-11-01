@@ -42,6 +42,7 @@ typedef struct _influx_client_t
     char* pwd; // http only [optional for auth]
 } influx_client_t;
 
+int format_line(char **buf, int *len, size_t used, ...);
 int post_http(influx_client_t* c, ...);
 int send_udp(influx_client_t* c, ...);
 
@@ -55,21 +56,20 @@ int send_udp(influx_client_t* c, ...);
 #define IF_TYPE_TIMESTAMP     7
 
 int _escaped_append(char** dest, size_t* len, size_t* used, const char* src, const char* escape_seq);
+int _begin_line(char **buf);
 int _format_line(char** buf, va_list ap);
+int _format_line2(char** buf, va_list ap, size_t *, size_t);
+int post_http_send_line(influx_client_t *c, char *buf, int len);
+int send_udp_line(influx_client_t* c, char *line, int len);
 
-int post_http(influx_client_t* c, ...)
+int post_http_send_line(influx_client_t *c, char *buf, int len)
 {
-    va_list ap;
-    struct iovec iv[2];
+    int sock, ret_code = 0, content_length = 0;
     struct sockaddr_in addr;
-    int sock, ret_code = 0, content_length = 0, len = 0;
+    struct iovec iv[2];
     char ch;
 
-    va_start(ap, c);
-    len = _format_line((char**)&iv[1].iov_base, ap);
-    va_end(ap);
-    if(len < 0)
-        return -1;
+    iv[1].iov_base = buf;
     iv[1].iov_len = len;
 
     if(!(iv[0].iov_base = (char*)malloc(len = 0x100))) {
@@ -81,23 +81,33 @@ int post_http(influx_client_t* c, ...)
             c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
         if((int)iv[0].iov_len > len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
             free(iv[1].iov_base);
+            free(iv[0].iov_base);
             return -3;
         }
         else
             break;
     }
 
+	fprintf(stderr, "influxdb-c::post_http: iv[0] = '%s'\n", (char *)iv[0].iov_base);
+	fprintf(stderr, "influxdb-c::post_http: iv[1] = '%s'\n", (char *)iv[1].iov_base);
+
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
-    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE)
+    if((addr.sin_addr.s_addr = inet_addr(c->host)) == INADDR_NONE) {
+        free(iv[1].iov_base);
+        free(iv[0].iov_base);
         return -4;
+    }
 
-    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+        free(iv[1].iov_base);
+        free(iv[0].iov_base);
         return -5;
+    }
 
     if(connect(sock, (struct sockaddr*)(&addr), sizeof(addr)) < 0) {
-        close(sock);
-        return -6;
+        ret_code = -6;
+        goto END;
     }
 
     if(writev(sock, iv, 2) < (int)(iv[0].iov_len + iv[1].iov_len)) {
@@ -144,18 +154,27 @@ END:
 #undef _GET_NUMBER
 #undef _
 
-int send_udp(influx_client_t* c, ...)
+int post_http(influx_client_t* c, ...)
 {
     va_list ap;
-    char* line = NULL;
-    int sock, len = 0, ret = 0;
-    struct sockaddr_in addr;
+    char *line;
+    int ret_code = 0, len = 0;
 
     va_start(ap, c);
-    len = _format_line(&line, ap);
+    len = _format_line((char**)&line, ap);
     va_end(ap);
     if(len < 0)
         return -1;
+
+    ret_code = post_http_send_line(c, line, len);
+
+    return ret_code;
+}
+
+int send_udp_line(influx_client_t* c, char *line, int len)
+{
+    int sock, ret = 0;
+    struct sockaddr_in addr;
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
@@ -172,13 +191,56 @@ int send_udp(influx_client_t* c, ...)
     if(sendto(sock, line, len, 0, (struct sockaddr *)&addr, sizeof(addr)) < len)
         ret = -4;
 
-    close(sock);
 END:
+    close(sock);
+    return ret;
+}
+
+int send_udp(influx_client_t* c, ...)
+{
+    int ret = 0, len;
+    va_list ap;
+    char* line = NULL;
+
+    va_start(ap, c);
+    len = _format_line(&line, ap);
+    va_end(ap);
+    if(len < 0)
+        return -1;
+
+    ret = send_udp_line(c, line, len);
+
     free(line);
     return ret;
 }
 
+int format_line(char **buf, int *len, size_t used, ...)
+{
+    va_list ap;
+    va_start(ap, used);
+    used = _format_line2(buf, ap, (size_t *)len, used);
+    va_end(ap);
+    if(*len < 0)
+        return -1;
+    else
+	return used;
+}
+
+int _begin_line(char **buf)
+{
+    int len = 0x100;
+    if(!(*buf = (char*)malloc(len)))
+        return -1;
+    return len;
+}
+
 int _format_line(char** buf, va_list ap)
+{
+	size_t len = 0;
+	return _format_line2(buf, ap, &len, 0);
+}
+
+int _format_line2(char** buf, va_list ap, size_t *_len, size_t used)
 {
 #define _APPEND(fmter...) \
     for(;;) {\
@@ -192,13 +254,15 @@ int _format_line(char** buf, va_list ap)
         }\
     }
 
-    size_t len = 0x100, used = 0;
+    size_t len = *_len;
     int written = 0, type = 0, last_type = 0;
     unsigned long long i = 0;
     double d = 0.0;
 
-    if(!(*buf = (char*)malloc(len)))
-        return -1;
+    if (*buf == NULL) {
+	    len = _begin_line(buf);
+	    used = 0;
+    }
 
     type = va_arg(ap, int);
     while(type != IF_TYPE_ARG_END) {
@@ -254,8 +318,10 @@ int _format_line(char** buf, va_list ap)
         last_type = type;
         type = va_arg(ap, int);
     }
+    _APPEND("\n");
     if(last_type <= IF_TYPE_TAG)
         goto FAIL;
+    *_len = len;
     return used;
 FAIL:
     free(*buf);
