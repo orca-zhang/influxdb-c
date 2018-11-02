@@ -39,5 +39,3 @@ Makefile
 # ctags files
 .tags*
 
-# tmp cpp files
-*.cc
