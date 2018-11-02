@@ -69,7 +69,7 @@ TEST (influxdb_c, format_line)
     // N1: MEAS first
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 2), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39\n"), 0);
     free(line);
 
     // E: not MEAS at first
@@ -95,23 +95,23 @@ TEST (influxdb_c, format_line)
     // N: TAG/FIELD after MEAS
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_F_FLT("f", 28.39, 1), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v f=28.4"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v f=28.4\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\""), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\"\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_INT("i", 1048576), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo i=1048576i"), 0);
+    ASSERT_EQ(strcmp(line, "foo i=1048576i\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_BOL("b", 1), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo b=t"), 0);
+    ASSERT_EQ(strcmp(line, "foo b=t\n"), 0);
     free(line);
 
     // E: invalid type after MEAS
@@ -128,23 +128,23 @@ TEST (influxdb_c, format_line)
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v2"), 
         INFLUX_F_FLT("f", 28.39, 1), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v2 f=28.4"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v2 f=28.4\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_F_STR("s", "string"), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v s=\"string\""), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v s=\"string\"\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v f=28\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_F_INT("i", 1048576), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v i=1048576i"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v i=1048576i\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_F_BOL("b", 1), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v b=t"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v b=t\n"), 0);
     free(line);
 
     // E: invalid type after TAG
@@ -161,94 +161,94 @@ TEST (influxdb_c, format_line)
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), 
         INFLUX_MEAS("bar"), INFLUX_F_FLT("f", 0, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\"\nbar f=0"), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\"\nbar f=0\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), 
         INFLUX_MEAS("bar"), INFLUX_F_FLT("f", 0, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28\nbar f=0"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28\nbar f=0\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_INT("i", 1048576), 
         INFLUX_MEAS("bar"), INFLUX_F_FLT("f", 0, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo i=1048576i\nbar f=0"), 0);
+    ASSERT_EQ(strcmp(line, "foo i=1048576i\nbar f=0\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_BOL("b", 1), 
         INFLUX_MEAS("bar"), INFLUX_F_FLT("f", 0, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo b=t\nbar f=0"), 0);
+    ASSERT_EQ(strcmp(line, "foo b=t\nbar f=0\n"), 0);
     free(line);
 
     // N: STRING FIELD after FIELD
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), INFLUX_F_STR("s1", "string"), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\",s1=\"string\""), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\",s1=\"string\"\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_F_STR("s1", "string"), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28,s1=\"string\""), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28,s1=\"string\"\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_INT("i", 1048576), INFLUX_F_STR("s1", "string"), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo i=1048576i,s1=\"string\""), 0);
+    ASSERT_EQ(strcmp(line, "foo i=1048576i,s1=\"string\"\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_BOL("b", 1), INFLUX_F_STR("s1", "string"), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo b=t,s1=\"string\""), 0);
+    ASSERT_EQ(strcmp(line, "foo b=t,s1=\"string\"\n"), 0);
     free(line);
 
     // N: FLOAT FIELD after FIELD
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), INFLUX_F_FLT("f2", 28.39, 3), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\",f2=28.390"), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\",f2=28.390\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_F_FLT("f2", 28.39, 3), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28,f2=28.390"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28,f2=28.390\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_INT("i", 1048576), INFLUX_F_FLT("f2", 28.39, 3), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo i=1048576i,f2=28.390"), 0);
+    ASSERT_EQ(strcmp(line, "foo i=1048576i,f2=28.390\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_BOL("b", 1), INFLUX_F_FLT("f2", 28.39, 3), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo b=t,f2=28.390"), 0);
+    ASSERT_EQ(strcmp(line, "foo b=t,f2=28.390\n"), 0);
     free(line);
 
     // N: INTEGER FIELD after FIELD
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), INFLUX_F_INT("i2", 10), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\",i2=10i"), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\",i2=10i\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_F_INT("i2", 10), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28,i2=10i"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28,i2=10i\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_INT("i", 1048576), INFLUX_F_INT("i2", 10), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo i=1048576i,i2=10i"), 0);
+    ASSERT_EQ(strcmp(line, "foo i=1048576i,i2=10i\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_BOL("b", 1), INFLUX_F_INT("i2", 10), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo b=t,i2=10i"), 0);
+    ASSERT_EQ(strcmp(line, "foo b=t,i2=10i\n"), 0);
     free(line);
 
     // N: BOOLEAN FIELD after FIELD
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), INFLUX_F_BOL("b2", 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\",b2=f"), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\",b2=f\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_F_BOL("b2", 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28,b2=f"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28,b2=f\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_INT("i", 1048576), INFLUX_F_BOL("b2", 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo i=1048576i,b2=f"), 0);
+    ASSERT_EQ(strcmp(line, "foo i=1048576i,b2=f\n"), 0);
     free(line);
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_BOL("b", 1), INFLUX_F_BOL("b2", 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo b=t,b2=f"), 0);
+    ASSERT_EQ(strcmp(line, "foo b=t,b2=f\n"), 0);
     free(line);
 
     // E: invalid type after STRING FIELD
@@ -295,7 +295,7 @@ TEST (influxdb_c, format_line)
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_STR("s", "string"), 
         INFLUX_TS(1512722735522840439), INFLUX_MEAS("bar"), INFLUX_F_FLT("f", 0, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo s=\"string\" 1512722735522840439\nbar f=0"), 0);
+    ASSERT_EQ(strcmp(line, "foo s=\"string\" 1512722735522840439\nbar f=0\n"), 0);
     free(line);
 
     // E: invalid type after TIMESTAMP
@@ -325,62 +325,62 @@ TEST (influxdb_c, format_line)
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 2), 
         INFLUX_TS(1512722735522840439), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39 1512722735522840439"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39 1512722735522840439\n"), 0);
     free(line);
 
     // N: right syntax meas field,field2
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 2), 
         INFLUX_F_FLT("f2", 28.39, 1), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4\n"), 0);
     free(line);
 
     // N: right syntax meas field,field2 timestamp
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 2), 
         INFLUX_F_FLT("f2", 28.39, 1), INFLUX_TS(1512722735522840439), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4 1512722735522840439"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4 1512722735522840439\n"), 0);
     free(line);
 
     // N: right syntax meas,tag field
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_F_FLT("f", 28.39, 2), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39\n"), 0);
     free(line);
 
     // N: right syntax meas,tag field timestamp
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), 
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_TS(1512722735522840439), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39 1512722735522840439"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39 1512722735522840439\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v"), 
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field timestamp
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v"), 
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_TS(1512722735522840439), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39 1512722735522840439"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39 1512722735522840439\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field,field2
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v"), 
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_F_FLT("f2", 28.39, 1), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field,field2 timestamp
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_TAG("k", "v"), INFLUX_TAG("k2", "v"), 
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_F_FLT("f2", 28.39, 1), INFLUX_TS(1512722735522840439), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4 1512722735522840439"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4 1512722735522840439\n"), 0);
     free(line);
 
     // E: syntax error meas,tag
@@ -401,14 +401,14 @@ TEST (influxdb_c, format_line)
         INFLUX_TS(1512722735522840439), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39 1512722735522840439\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39 1512722735522840439\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas field,field2\nline
     ASSERT_TRUE(format_line(&line, INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 2), INFLUX_F_FLT("f2", 28.39, 1), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas field,field2 timestamp\nline
@@ -416,7 +416,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f2", 28.39, 1), INFLUX_TS(1512722735522840439), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4 1512722735522840439\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.39,f2=28.4 1512722735522840439\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas,tag field\nline
@@ -424,7 +424,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f", 28.39, 2), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas,tag field timestamp\nline
@@ -432,7 +432,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_TS(1512722735522840439), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39 1512722735522840439\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v f=28.39 1512722735522840439\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field\nline
@@ -440,7 +440,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f", 28.39, 2), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field timestamp\nline
@@ -448,7 +448,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_TS(1512722735522840439), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39 1512722735522840439\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39 1512722735522840439\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field,field2\nline
@@ -456,7 +456,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_F_FLT("f2", 28.39, 1), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4\nfoo f=28\n"), 0);
     free(line);
 
     // N: right syntax meas,tag,tag2 field,field2 timestamp\nline
@@ -464,7 +464,7 @@ TEST (influxdb_c, format_line)
         INFLUX_F_FLT("f", 28.39, 2), INFLUX_F_FLT("f2", 28.39, 1), INFLUX_TS(1512722735522840439), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 0), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4 1512722735522840439\nfoo f=28"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v f=28.39,f2=28.4 1512722735522840439\nfoo f=28\n"), 0);
     free(line);
 
     // N: multi line
@@ -478,7 +478,7 @@ TEST (influxdb_c, format_line)
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.38, 2), 
         INFLUX_MEAS("foo"), INFLUX_F_FLT("f", 28.39, 2), INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    ASSERT_EQ(strcmp(line, "foo f=28.31\nfoo f=28.32\nfoo f=28.33\nfoo f=28.34\nfoo f=28.35\nfoo f=28.36\nfoo f=28.37\nfoo f=28.38\nfoo f=28.39"), 0);
+    ASSERT_EQ(strcmp(line, "foo f=28.31\nfoo f=28.32\nfoo f=28.33\nfoo f=28.34\nfoo f=28.35\nfoo f=28.36\nfoo f=28.37\nfoo f=28.38\nfoo f=28.39\n"), 0);
     free(line);
 }
 

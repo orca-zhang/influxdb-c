@@ -238,6 +238,7 @@ int _begin_line(char **buf)
 int _format_line(char** buf, va_list ap)
 {
 	size_t len = 0;
+	*buf = NULL;
 	return _format_line2(buf, ap, &len, 0);
 }
 
