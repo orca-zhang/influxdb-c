@@ -5,7 +5,7 @@ A header-only C write client for InfluxDB.
 [![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](https://github.com/orca-zhang/influxdb-c/blob/master/LICENSE)
 [![Build Status](https://semaphoreci.com/api/v1/orca-zhang-91/influxdb-c/branches/master/shields_badge.svg)](https://semaphoreci.com/orca-zhang-91/influxdb-c)
 
-- Support versions:
+- Supported versions:
   - InfluxDB v0.9 ~ v1.4
   - Check yourself while using other versions.
 
@@ -19,8 +19,8 @@ A header-only C write client for InfluxDB.
   - Only a tiny header file needs to be included.
 - **No dependencies**:
   - Unless std C libraries.
-- **Under seriously testing**:
-  - Use gtest & [mockcpp](https://github.com/ez8-co/mockcpp)
+- **Under serious testing**:
+  - Uses gtest & [mockcpp](https://github.com/ez8-co/mockcpp)
 
 ### Examples
 
@@ -41,7 +41,7 @@ A header-only C write client for InfluxDB.
     ```
 
 
-- You can rapidly start writing serires by according to the following example.
+- You can rapidly start writing series by using one of the following examples:
 
 - Client configurations:
 
@@ -92,7 +92,7 @@ A header-only C write client for InfluxDB.
     foo,k=v,x=y x=10i,y=10.30,y=10.35,b=t 1512722735522840439
     ```
 
-- You could change `post_http` to `send_udp` for udp request. And only `host` and `port` is required for udp.
+- You could change `post_http` to `send_udp` for UDP request. And only `host` and `port` are required for UDP operation.
 
     ```c
     influx_client_t c = {strdup("127.0.0.1"), 8091, NULL, NULL, NULL};
@@ -124,9 +124,10 @@ A header-only C write client for InfluxDB.
     bar y=10.30
     ```
 
-- If bulk writes should be done from within a loop, one has to format
-  each measurement separately, then at the end send the formatted line to
-  the database. This example sends 10 measurements:
+- If measurement data is sent from within a loop, but higher write performance
+  is needed, one has to format each measurement separately, then at the end
+  send the formatted line to the database. This example sends 10 measurements
+  with a single http request:
 
   ```c
   influx_client_t c = {strdup("127.0.0.1"), 8091, NULL, NULL, NULL};
