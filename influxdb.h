@@ -157,7 +157,7 @@ END:
 int post_http(influx_client_t* c, ...)
 {
     va_list ap;
-    char *line;
+    char *line = NULL;
     int ret_code = 0, len = 0;
 
     va_start(ap, c);
