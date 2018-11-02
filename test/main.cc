@@ -59,8 +59,7 @@ TEST (influxdb_c, format_line)
             INFLUX_TS(1512722735522840439),
         INFLUX_END));
     ASSERT_TRUE(line != NULL);
-    printf("line = '%s'\n", line);
-    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v2 s=\"string\",f=28.39\nbar i=1048576i,b=t 1512722735522840439\n"), 0);
+    ASSERT_EQ(strcmp(line, "foo,k=v,k2=v2 s=\"string\",f=28.39\nbar i=1048576i,b=t 1512722735522840439\n"), 0) << "got = " << line;
     free(line);
 
     /////////////////////
