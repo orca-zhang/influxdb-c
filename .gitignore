@@ -39,3 +39,5 @@ Makefile
 # ctags files
 .tags*
 
+# intermediate cc files
+test/*.cc
