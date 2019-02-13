@@ -78,9 +78,14 @@ int post_http_send_line(influx_client_t *c, char *buf, int len)
         return -2;
     }
     for(;;) {
-        iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n",
-            c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
-        if((int)iv[0].iov_len > len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
+        iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, 
+	    "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\n"
+	    "Content-Length: %zd\r\n\r\n",
+            c->db, c->usr ? c->usr : "",
+	    c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
+
+        if((int)iv[0].iov_len > len && 
+	    !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
             free(iv[1].iov_base);
             free(iv[0].iov_base);
             return -3;
@@ -89,8 +94,10 @@ int post_http_send_line(influx_client_t *c, char *buf, int len)
             break;
     }
 
-	fprintf(stderr, "influxdb-c::post_http: iv[0] = '%s'\n", (char *)iv[0].iov_base);
-	fprintf(stderr, "influxdb-c::post_http: iv[1] = '%s'\n", (char *)iv[1].iov_base);
+	/*fprintf(stderr,
+	    "influxdb-c::post_http: iv[0] = '%s'\n", (char *)iv[0].iov_base);*/
+	/*fprintf(stderr,
+	    "influxdb-c::post_http: iv[1] = '%s'\n", (char *)iv[1].iov_base);*/
 
     addr.sin_family = AF_INET;
     addr.sin_port = htons(c->port);
@@ -144,6 +151,10 @@ int post_http_send_line(influx_client_t *c, char *buf, int len)
     }
     ret_code = -11;
 END:
+	if (ret_code < 0) {
+		fprintf(stderr, "Influxdb Server Response: '%s'\n",
+			(char *)iv[0].iov_base);
+	}
     close(sock);
     free(iv[0].iov_base);
     free(iv[1].iov_base);
@@ -232,6 +243,7 @@ int _begin_line(char **buf)
     int len = 0x100;
     if(!(*buf = (char*)malloc(len)))
         return -1;
+    memset(*buf, 0, len);
     return len;
 }
 
@@ -245,21 +257,33 @@ int _format_line(char** buf, va_list ap)
 int _format_line2(char** buf, va_list ap, size_t *_len, size_t used)
 {
 #define _APPEND(fmter...) \
-    for(;;) {\
-        if((written = snprintf(*buf + used, len - used, ##fmter)) < 0)\
-            goto FAIL;\
-        if(used + written > len && !(*buf = (char*)realloc(*buf, len *= 2)))\
-            return -1;\
-        else {\
-            used += written;\
-            break;\
-        }\
+    for(;;) { \
+	int bytes_available = len - used; \
+        if((written = snprintf(*buf + used, bytes_available, ##fmter)) < 0) \
+            goto FAIL; \
+	/* snprintf does not count the trailing \0 in the return value */ \
+        if(written + 1 > bytes_available) { \
+		fprintf(stderr, "Reallocating buffer...\n"); \
+		*buf = (char*)realloc(*buf, len * 2); \
+		if (!(*buf)) { \
+			fprintf(stderr, "Failed realloc().\n"); \
+			return -1; \
+		} \
+		/* Initialise newly allocated memory */ \
+		memset(*buf + len, 0, len); \
+		len *= 2; \
+	} \
+        else { \
+            used += written; \
+            break; \
+        } \
     }
 
     size_t len = *_len;
     int written = 0, type = 0, last_type = 0;
     unsigned long long i = 0;
     double d = 0.0;
+    unsigned int c;
 
     if (*buf == NULL) {
 	    len = _begin_line(buf);
@@ -269,9 +293,11 @@ int _format_line2(char** buf, va_list ap, size_t *_len, size_t used)
     type = va_arg(ap, int);
     while(type != IF_TYPE_ARG_END) {
         if(type >= IF_TYPE_TAG && type <= IF_TYPE_FIELD_BOOLEAN) {
-            if(last_type < IF_TYPE_MEAS || last_type > (type == IF_TYPE_TAG ? IF_TYPE_TAG : IF_TYPE_FIELD_BOOLEAN))
+            if(last_type < IF_TYPE_MEAS ||
+		last_type > (type == IF_TYPE_TAG ? IF_TYPE_TAG : IF_TYPE_FIELD_BOOLEAN))
                 goto FAIL;
-            _APPEND("%c", (last_type <= IF_TYPE_TAG && type > IF_TYPE_TAG) ? ' ' : ',');
+            _APPEND("%c",
+		(last_type <= IF_TYPE_TAG && type > IF_TYPE_TAG) ? ' ' : ',');
             if(_escaped_append(buf, &len, &used, va_arg(ap, char*), ",= "))
                 return -2;
             _APPEND("=");
@@ -309,7 +335,8 @@ int _format_line2(char** buf, va_list ap, size_t *_len, size_t used)
                 _APPEND("%c", i ? 't' : 'f');
                 break;
             case IF_TYPE_TIMESTAMP:
-                if(last_type < IF_TYPE_FIELD_STRING || last_type > IF_TYPE_FIELD_BOOLEAN)
+                if(last_type < IF_TYPE_FIELD_STRING
+		    || last_type > IF_TYPE_FIELD_BOOLEAN)
                     goto FAIL;
                 i = va_arg(ap, long long);
                 _APPEND(" %lld", i);
@@ -319,11 +346,31 @@ int _format_line2(char** buf, va_list ap, size_t *_len, size_t used)
         }
         last_type = type;
         type = va_arg(ap, int);
+#if 0
+	fprintf(stderr, "\n>> buf:");
+	for (c = 0; c < used; ++c) {
+		if ((*buf)[c] == 0) {
+			printf("\\0");
+		} else {
+			printf("%c", (*buf)[c]);
+		}
+	}
+	printf("\n"); 
+	fprintf(stderr, ">> buf: used = %lu, len = %lu\n", used, len);
+#endif
     }
     _APPEND("\n");
     if(last_type <= IF_TYPE_TAG)
         goto FAIL;
     *_len = len;
+
+    /* Check that we don't have any spurious \0 in the assembled string */
+    for (c = 0; c < used - 1; ++c) {
+	if ((*buf)[c] == 0) {
+		fprintf(stderr, "Assembled line contains \\0.\n");
+		abort();
+	}
+    }
     return used;
 FAIL:
     free(*buf);
