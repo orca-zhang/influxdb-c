@@ -80,7 +80,7 @@ int post_http_send_line(influx_client_t *c, char *buf, int len)
     for(;;) {
         iv[0].iov_len = snprintf((char*)iv[0].iov_base, len, "POST /write?db=%s&u=%s&p=%s HTTP/1.1\r\nHost: %s\r\nContent-Length: %zd\r\n\r\n",
             c->db, c->usr ? c->usr : "", c->pwd ? c->pwd : "", c->host, iv[1].iov_len);
-        if((int)iv[0].iov_len > len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
+        if((int)iv[0].iov_len >= len && !(iv[0].iov_base = (char*)realloc(iv[0].iov_base, len *= 2))) {
             free(iv[1].iov_base);
             free(iv[0].iov_base);
             return -3;
@@ -248,7 +248,7 @@ int _format_line2(char** buf, va_list ap, size_t *_len, size_t used)
     for(;;) {\
         if((written = snprintf(*buf + used, len - used, ##fmter)) < 0)\
             goto FAIL;\
-        if(used + written > len && !(*buf = (char*)realloc(*buf, len *= 2)))\
+        if(used + written >= len && !(*buf = (char*)realloc(*buf, len *= 2)))\
             return -1;\
         else {\
             used += written;\

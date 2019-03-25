@@ -5,6 +5,19 @@
 using namespace std;
 #include "../influxdb.h"
 
+TEST (influxdb_c, snprintf)
+{
+    size_t len = 10;
+    size_t used = 0;
+    char* buffer = NULL;
+
+    buffer = (char*)malloc(len);
+    used = snprintf(buffer, len, "1234567890");
+    ASSERT_EQ(used, len);
+    ASSERT_EQ(strlen(buffer), len - 1);
+    ASSERT_EQ(strncmp(buffer, "1234567890", len - 1), 0);
+}
+
 TEST (influxdb_c, _escaped_append)
 {
     size_t len = 20;
