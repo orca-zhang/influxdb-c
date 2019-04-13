@@ -89,7 +89,7 @@ A header-only C write client for InfluxDB.
 - The series sent is:
 
     ```
-    foo,k=v,x=y x=10i,y=10.30,y=10.35,b=t 1512722735522840439
+    foo,k=v,x=y x=10i,y=10.30,z=10.35,b=t 1512722735522840439
     ```
 
 - You could change `post_http` to `send_udp` for UDP request. And only `host` and `port` are required for UDP operation.
