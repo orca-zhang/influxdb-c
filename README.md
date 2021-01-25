@@ -136,7 +136,7 @@ A header-only C write client for InfluxDB.
   int used = 0;
 
   for (int i = 0; i < 10; ++i) {
-      used = format_line(line, &len, used,
+      used = format_line(&line, &len, used,
           INFLUX_MEAS("foo"),
           INFLUX_TAG("k", "v"),
           INFLUX_F_INT("x", i),
